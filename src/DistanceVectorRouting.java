@@ -2,6 +2,11 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 
@@ -14,7 +19,7 @@ public class DistanceVectorRouting {
 		this.currentNode = currentNode;
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		// TODO Auto-generated method stub
 		String[] NodeList = {"a", "b", "c", "d", "e", "f"};
 		
@@ -58,6 +63,48 @@ public class DistanceVectorRouting {
 		} catch(IOException e){
 			System.err.println("Invalid Data!");
 			return;
+		}
+		
+		// Create a Socket
+		try {
+			int currentPort = 8000 + (int) currentNodeName.charAt(0);
+			DatagramSocket clientSocket = new DatagramSocket(currentPort);
+			
+			InetAddress IPAddress = InetAddress.getByName("localhost");
+			
+			if(DVR.currentNode.routingTableChanged){
+				
+				String routingTable = currentNode.getRoutingTableString();
+				
+				byte[] data = routingTable.getBytes();
+			
+				for(String neighbour : DVR.currentNode.neighbours){
+					int receiverPort = 8000 + (int) neighbour.charAt(0);
+					
+					System.out.println("Sending Data to " + neighbour);
+					System.out.println(routingTable);
+					
+					DatagramPacket dataPacket = new DatagramPacket(data, data.length, IPAddress, receiverPort);
+					clientSocket.send(dataPacket);
+				}
+			}
+			
+			byte[] receivedPacket = new byte[1024];
+			DatagramPacket receiveDatagramPacket = new DatagramPacket(receivedPacket, receivedPacket.length);
+			
+			clientSocket.receive(receiveDatagramPacket);
+			byte[] receiveData = receiveDatagramPacket.getData();
+			
+			String receivedRoutingTable = new String(receiveData);
+			
+			NetworkNode receivedNode = new NetworkNode(receivedRoutingTable);
+			
+			System.out.println(receivedNode);
+			
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}  catch (UnknownHostException e) {
+			e.printStackTrace();
 		}
 		
 	}
