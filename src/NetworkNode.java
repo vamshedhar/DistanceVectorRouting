@@ -1,9 +1,8 @@
-import java.util.ArrayList;
 import java.util.HashMap;
 
 public class NetworkNode {
 	public String name;
-	public ArrayList<String> neighbours;
+	public HashMap<String, Double> neighbours;
 	HashMap<String, DistanceVector> RoutingTable;
 	Boolean routingTableChanged;
 	
@@ -11,7 +10,7 @@ public class NetworkNode {
 	public NetworkNode(String name, String[] nodes) {
 		this.name = name;
 		this.routingTableChanged = false;
-		this.neighbours = new ArrayList<String>();
+		this.neighbours = new HashMap<String, Double>();
 		this.RoutingTable = new HashMap<String, DistanceVector>();
 		for(String nodeName : nodes){
 			DistanceVector DV = new DistanceVector();
@@ -51,7 +50,7 @@ public class NetworkNode {
 	
 	public void addNeighbourNode(String forNode, double distance, String nextHop){
 		this.routingTableChanged = true;
-		this.neighbours.add(forNode);
+		this.neighbours.put(forNode, distance);
 		this.updateRoutingTableEntry(forNode, distance, nextHop);
 	}
 	

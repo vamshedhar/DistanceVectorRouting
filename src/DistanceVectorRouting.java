@@ -22,6 +22,8 @@ public class DistanceVectorRouting {
 	public static void main(String[] args) throws Exception {
 		// TODO Auto-generated method stub
 		String[] NodeList = {"a", "b", "c", "d", "e", "f"};
+
+		// String[] NodeList = {"x", "y", "z"};
 		
 		String filename = args[0];
 		
@@ -72,34 +74,52 @@ public class DistanceVectorRouting {
 			
 			InetAddress IPAddress = InetAddress.getByName("localhost");
 			
-			if(DVR.currentNode.routingTableChanged){
-				
-				String routingTable = currentNode.getRoutingTableString();
-				
-				byte[] data = routingTable.getBytes();
-			
-				for(String neighbour : DVR.currentNode.neighbours){
-					int receiverPort = 8000 + (int) neighbour.charAt(0);
+			while(true){
+				if(DVR.currentNode.routingTableChanged){
+
+					System.out.println(DVR.currentNode);
+
+					System.out.println();
 					
-					System.out.println("Sending Data to " + neighbour);
-					System.out.println(routingTable);
+					String routingTable = currentNode.getRoutingTableString();
 					
-					DatagramPacket dataPacket = new DatagramPacket(data, data.length, IPAddress, receiverPort);
-					clientSocket.send(dataPacket);
+					byte[] data = routingTable.getBytes();
+				
+					for(String neighbour : DVR.currentNode.neighbours.keySet()){
+						int receiverPort = 8000 + (int) neighbour.charAt(0);
+						
+						System.out.println("Sending Data to " + neighbour);
+						System.out.println(routingTable);
+						
+						DatagramPacket dataPacket = new DatagramPacket(data, data.length, IPAddress, receiverPort);
+						clientSocket.send(dataPacket);
+					}
+					
+					DVR.currentNode.reset();
+				}
+				
+				byte[] receivedPacket = new byte[1024];
+				DatagramPacket receiveDatagramPacket = new DatagramPacket(receivedPacket, receivedPacket.length);
+				
+				clientSocket.receive(receiveDatagramPacket);
+				byte[] receiveData = receiveDatagramPacket.getData();
+				
+				String receivedRoutingTable = new String(receiveData);
+				
+				NetworkNode receivedNode = new NetworkNode(receivedRoutingTable);
+				
+				System.out.println(receivedNode);
+				
+				for(String node : receivedNode.RoutingTable.keySet()){
+					Double actualDistance = DVR.currentNode.RoutingTable.get(node).distance;
+					Double calculatedDistance = receivedNode.RoutingTable.get(node).distance + DVR.currentNode.neighbours.get(receivedNode.name);
+					if(actualDistance > calculatedDistance){
+						DVR.currentNode.updateRoutingTableEntry(node, calculatedDistance, receivedNode.name);
+					}
 				}
 			}
 			
-			byte[] receivedPacket = new byte[1024];
-			DatagramPacket receiveDatagramPacket = new DatagramPacket(receivedPacket, receivedPacket.length);
 			
-			clientSocket.receive(receiveDatagramPacket);
-			byte[] receiveData = receiveDatagramPacket.getData();
-			
-			String receivedRoutingTable = new String(receiveData);
-			
-			NetworkNode receivedNode = new NetworkNode(receivedRoutingTable);
-			
-			System.out.println(receivedNode);
 			
 		} catch (SocketException e) {
 			e.printStackTrace();
