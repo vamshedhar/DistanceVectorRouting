@@ -6,6 +6,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.StringTokenizer;
@@ -13,14 +14,15 @@ import java.util.StringTokenizer;
 public class DistanceVectorRouting {
 	
 	public NetworkNode currentNode;
+	public int iteration;
 	
 	public DistanceVectorRouting(NetworkNode currentNode) {
 		
 		this.currentNode = currentNode;
+		this.iteration = 1;
 	}
 	
 	public static void main(String[] args) throws Exception {
-		// TODO Auto-generated method stub
 		String[] NodeList = {"a", "b", "c", "d", "e", "f"};
 
 		// String[] NodeList = {"x", "y", "z"};
@@ -77,6 +79,8 @@ public class DistanceVectorRouting {
 			while(true){
 				if(DVR.currentNode.routingTableChanged){
 
+					System.out.println("Sending data to neighbours: Iteration " + DVR.iteration++);
+
 					System.out.println(DVR.currentNode);
 
 					System.out.println();
@@ -88,8 +92,8 @@ public class DistanceVectorRouting {
 					for(String neighbour : DVR.currentNode.neighbours.keySet()){
 						int receiverPort = 8000 + (int) neighbour.charAt(0);
 						
-						System.out.println("Sending Data to " + neighbour);
-						System.out.println(routingTable);
+						// System.out.println("Sending Data to " + neighbour);
+						// System.out.println(routingTable);
 						
 						DatagramPacket dataPacket = new DatagramPacket(data, data.length, IPAddress, receiverPort);
 						clientSocket.send(dataPacket);
@@ -97,26 +101,35 @@ public class DistanceVectorRouting {
 					
 					DVR.currentNode.reset();
 				}
-				
-				byte[] receivedPacket = new byte[1024];
-				DatagramPacket receiveDatagramPacket = new DatagramPacket(receivedPacket, receivedPacket.length);
-				
-				clientSocket.receive(receiveDatagramPacket);
-				byte[] receiveData = receiveDatagramPacket.getData();
-				
-				String receivedRoutingTable = new String(receiveData);
-				
-				NetworkNode receivedNode = new NetworkNode(receivedRoutingTable);
-				
-				System.out.println(receivedNode);
-				
-				for(String node : receivedNode.RoutingTable.keySet()){
-					Double actualDistance = DVR.currentNode.RoutingTable.get(node).distance;
-					Double calculatedDistance = receivedNode.RoutingTable.get(node).distance + DVR.currentNode.neighbours.get(receivedNode.name);
-					if(actualDistance > calculatedDistance){
-						DVR.currentNode.updateRoutingTableEntry(node, calculatedDistance, receivedNode.name);
+
+				try{
+					int TIMER = 10000;
+					byte[] receivedPacket = new byte[1024];
+					DatagramPacket receiveDatagramPacket = new DatagramPacket(receivedPacket, receivedPacket.length);
+
+					clientSocket.setSoTimeout(TIMER);
+					
+					clientSocket.receive(receiveDatagramPacket);
+					byte[] receiveData = receiveDatagramPacket.getData();
+					
+					String receivedRoutingTable = new String(receiveData);
+					
+					NetworkNode receivedNode = new NetworkNode(receivedRoutingTable);
+					
+					// System.out.println(receivedNode);
+					
+					for(String node : receivedNode.RoutingTable.keySet()){
+						Double actualDistance = DVR.currentNode.RoutingTable.get(node).distance;
+						Double calculatedDistance = receivedNode.RoutingTable.get(node).distance + DVR.currentNode.neighbours.get(receivedNode.name);
+						if(actualDistance > calculatedDistance){
+							DVR.currentNode.updateRoutingTableEntry(node, calculatedDistance, receivedNode.name);
+						}
 					}
+				} catch(SocketTimeoutException e){
+					DVR.currentNode.routingTableChanged = true;
 				}
+				
+				
 			}
 			
 			
