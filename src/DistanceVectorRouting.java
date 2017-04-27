@@ -81,12 +81,13 @@ public class DistanceVectorRouting {
 					System.out.println(DVR.currentNode);
 
 					System.out.println();
-					
-					String routingTable = currentNode.getRoutingTableString();
-					
-					byte[] data = routingTable.getBytes();
 				
 					for(String neighbour : DVR.currentNode.neighbours.keySet()){
+						
+						String routingTable = currentNode.getRoutingTableString(neighbour);
+					
+						byte[] data = routingTable.getBytes();
+
 						int receiverPort = 8000 + (int) neighbour.charAt(0);
 						
 						DatagramPacket dataPacket = new DatagramPacket(data, data.length, IPAddress, receiverPort);
@@ -114,15 +115,22 @@ public class DistanceVectorRouting {
 					NetworkNode receivedNode = new NetworkNode(receiveData);
 					
 					for(String node : receivedNode.RoutingTable.keySet()){
+
 						DistanceVector tableEntry = DVR.currentNode.RoutingTable.get(node);
 
 						Double actualDistance = Double.POSITIVE_INFINITY;
+						String nextHop = null;
+
 						if(tableEntry != null){
 							actualDistance = tableEntry.distance;
+							nextHop = tableEntry.next;
 						}
 						
 						Double calculatedDistance = receivedNode.RoutingTable.get(node).distance + DVR.currentNode.neighbours.get(receivedNode.name);
+
 						if(actualDistance > calculatedDistance){
+							DVR.currentNode.updateRoutingTableEntry(node, calculatedDistance, receivedNode.name);
+						} else if(nextHop.equals(receivedNode.name) && !actualDistance.equals(calculatedDistance)){
 							DVR.currentNode.updateRoutingTableEntry(node, calculatedDistance, receivedNode.name);
 						}
 					}
