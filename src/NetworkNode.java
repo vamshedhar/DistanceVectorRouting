@@ -7,24 +7,20 @@ public class NetworkNode {
 	Boolean routingTableChanged;
 	
 	
-	public NetworkNode(String name, String[] nodes) {
+	public NetworkNode(String name) {
 		this.name = name;
-		this.routingTableChanged = false;
+		this.routingTableChanged = true;
 		this.neighbours = new HashMap<String, Double>();
 		this.RoutingTable = new HashMap<String, DistanceVector>();
-		for(String nodeName : nodes){
-			DistanceVector DV = new DistanceVector();
-			
-			if(nodeName.equals(this.name)){
-				DV.distance = 0;
-			}
-			
-			RoutingTable.put(nodeName, DV);
-		}
 	}
 	
-	public NetworkNode(String receivedData){
+	public NetworkNode(byte[] receiveData){
+
+		String receivedData = new String(receiveData);
+
 		String[] data = receivedData.split(",");
+
+		this.routingTableChanged = true;
 		
 		this.name = data[0];
 		
@@ -48,19 +44,34 @@ public class NetworkNode {
 		this.routingTableChanged = false;
 	}
 	
-	public void addNeighbourNode(String forNode, double distance, String nextHop){
+	public void addNeighbourNode(String forNode, double distance, String nextHop, Boolean create){
 		this.routingTableChanged = true;
+
+		double previousDistance = Double.POSITIVE_INFINITY;
+
+		if(this.neighbours.get(forNode) != null){
+			previousDistance = this.neighbours.get(forNode);
+		}
+
 		this.neighbours.put(forNode, distance);
-		this.updateRoutingTableEntry(forNode, distance, nextHop);
+
+		if(create || previousDistance != distance){
+			this.updateRoutingTableEntry(forNode, distance, nextHop);
+		}
 	}
 	
 	public void updateRoutingTableEntry(String forNode, double distance, String nextHop){
 		this.routingTableChanged = true;
 		
 		DistanceVector vector = this.RoutingTable.get(forNode);
+
+		if(vector != null){
+			vector.distance = distance;
+			vector.next = nextHop;
+		} else{
+			this.RoutingTable.put(forNode, new DistanceVector(distance, nextHop));
+		}
 		
-		vector.distance = distance;
-		vector.next = nextHop;
 	}
 	
 	public String getRoutingTableString(){

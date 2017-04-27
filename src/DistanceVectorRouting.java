@@ -15,6 +15,7 @@ public class DistanceVectorRouting {
 	
 	public NetworkNode currentNode;
 	public int iteration;
+	public static long TIMEOUT = 10000;
 	
 	public DistanceVectorRouting(NetworkNode currentNode) {
 		
@@ -23,51 +24,15 @@ public class DistanceVectorRouting {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		String[] NodeList = {"a", "b", "c", "d", "e", "f"};
-
-		// String[] NodeList = {"x", "y", "z"};
-		
 		String filename = args[0];
 		
 		String currentNodeName = filename.split(".txt")[0];
 		
-		NetworkNode currentNode = new NetworkNode(currentNodeName, NodeList);
+		NetworkNode currentNode = new NetworkNode(currentNodeName);
 		
 		DistanceVectorRouting DVR = new DistanceVectorRouting(currentNode);
-		
-		try{
-			BufferedReader reader = new BufferedReader(new FileReader(filename));
-			
-			String line = reader.readLine();
-			while((line = reader.readLine()) != null) {
-				
-				StringTokenizer st = new StringTokenizer(line);
-				
-				if(st.countTokens() != 2){
-					System.err.println("Invalid data!");
-					reader.close();
-					return;
-				}
-				
-				String neighbourNodeName = st.nextToken();
-				Double weight = Double.parseDouble(st.nextToken());
-				
-				currentNode.addNeighbourNode(neighbourNodeName, weight, neighbourNodeName);
-				
-			}
-			
-			System.out.println(DVR.currentNode);
-			reader.close();
-		} catch(FileNotFoundException e){
-			System.err.println("File Not Found!");
-			return;
-		} catch(NumberFormatException e){
-			System.err.println("Invalid Data!");
-			return;
-		} catch(IOException e){
-			System.err.println("Invalid Data!");
-			return;
-		}
+
+		long startTime = System.currentTimeMillis();
 		
 		// Create a Socket
 		try {
@@ -77,7 +42,39 @@ public class DistanceVectorRouting {
 			InetAddress IPAddress = InetAddress.getByName("localhost");
 			
 			while(true){
+
 				if(DVR.currentNode.routingTableChanged){
+
+					try{
+						BufferedReader reader = new BufferedReader(new FileReader(filename));
+						
+						String line = reader.readLine();
+						while((line = reader.readLine()) != null) {
+							
+							StringTokenizer st = new StringTokenizer(line);
+							
+							if(st.countTokens() != 2){
+								System.err.println("Invalid data!");
+								reader.close();
+								return;
+							}
+							
+							String neighbourNodeName = st.nextToken();
+							Double weight = Double.parseDouble(st.nextToken());
+							
+							currentNode.addNeighbourNode(neighbourNodeName, weight, neighbourNodeName, DVR.iteration == 1);
+						}
+						reader.close();
+					} catch(FileNotFoundException e){
+						System.err.println("File Not Found!");
+						return;
+					} catch(NumberFormatException e){
+						System.err.println("Invalid Data!");
+						return;
+					} catch(IOException e){
+						System.err.println("Invalid Data!");
+						return;
+					}
 
 					System.out.println("Sending data to neighbours: Iteration " + DVR.iteration++);
 
@@ -92,9 +89,6 @@ public class DistanceVectorRouting {
 					for(String neighbour : DVR.currentNode.neighbours.keySet()){
 						int receiverPort = 8000 + (int) neighbour.charAt(0);
 						
-						// System.out.println("Sending Data to " + neighbour);
-						// System.out.println(routingTable);
-						
 						DatagramPacket dataPacket = new DatagramPacket(data, data.length, IPAddress, receiverPort);
 						clientSocket.send(dataPacket);
 					}
@@ -103,23 +97,30 @@ public class DistanceVectorRouting {
 				}
 
 				try{
-					int TIMER = 10000;
+					long TIMER = TIMEOUT - (System.currentTimeMillis() - startTime);
+
+					if (TIMER < 0) {
+						throw new SocketTimeoutException();
+					}
+
 					byte[] receivedPacket = new byte[1024];
 					DatagramPacket receiveDatagramPacket = new DatagramPacket(receivedPacket, receivedPacket.length);
 
-					clientSocket.setSoTimeout(TIMER);
+					clientSocket.setSoTimeout((int) TIMER);
 					
 					clientSocket.receive(receiveDatagramPacket);
 					byte[] receiveData = receiveDatagramPacket.getData();
 					
-					String receivedRoutingTable = new String(receiveData);
-					
-					NetworkNode receivedNode = new NetworkNode(receivedRoutingTable);
-					
-					// System.out.println(receivedNode);
+					NetworkNode receivedNode = new NetworkNode(receiveData);
 					
 					for(String node : receivedNode.RoutingTable.keySet()){
-						Double actualDistance = DVR.currentNode.RoutingTable.get(node).distance;
+						DistanceVector tableEntry = DVR.currentNode.RoutingTable.get(node);
+
+						Double actualDistance = Double.POSITIVE_INFINITY;
+						if(tableEntry != null){
+							actualDistance = tableEntry.distance;
+						}
+						
 						Double calculatedDistance = receivedNode.RoutingTable.get(node).distance + DVR.currentNode.neighbours.get(receivedNode.name);
 						if(actualDistance > calculatedDistance){
 							DVR.currentNode.updateRoutingTableEntry(node, calculatedDistance, receivedNode.name);
@@ -127,6 +128,7 @@ public class DistanceVectorRouting {
 					}
 				} catch(SocketTimeoutException e){
 					DVR.currentNode.routingTableChanged = true;
+					startTime = System.currentTimeMillis();
 				}
 				
 				
