@@ -107,8 +107,8 @@ public class NetworkNode {
 			}
 			
 			DistanceVector DV = this.RoutingTable.get(node);
-			// output += "shortest path " + this.name + "-" + node + ": the next hop is " + DV.next + " and the cost is " + DV.distance + "\n";
-			output += this.name + "-" + node + ": " + DV.next + " and " + DV.distance + "\n";
+			output += "shortest path " + this.name + "-" + node + ": the next hop is " + DV.next + " and the cost is " + DV.distance + "\n";
+			// output += this.name + "-" + node + ": " + DV.next + " and " + DV.distance + "\n";
 
 		}
 		

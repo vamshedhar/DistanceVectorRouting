@@ -75,8 +75,6 @@ public class DistanceVectorRouting {
 						Set<String> newNeighbours = new HashSet<String>();
 						newNeighbours.addAll(neighbours.keySet());
 						newNeighbours.addAll(DVR.currentNode.neighbours.keySet());
-						
-						DVR.currentNode.neighbours = new HashMap<String, Double>();
 
 						for(String neighbourNodeName : newNeighbours){
 							Double weight = neighbours.get(neighbourNodeName);
@@ -106,6 +104,10 @@ public class DistanceVectorRouting {
 					System.out.println();
 				
 					for(String neighbour : DVR.currentNode.neighbours.keySet()){
+
+						if(DVR.currentNode.neighbours.get(neighbour) == Double.POSITIVE_INFINITY){
+							continue;
+						}
 
 						String routingTable = currentNode.getRoutingTableString(neighbour);
 					
