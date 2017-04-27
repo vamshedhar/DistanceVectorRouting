@@ -9,6 +9,9 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.StringTokenizer;
 
 public class DistanceVectorRouting {
@@ -49,6 +52,9 @@ public class DistanceVectorRouting {
 						BufferedReader reader = new BufferedReader(new FileReader(filename));
 						
 						String line = reader.readLine();
+
+						HashMap<String, Double> neighbours = new HashMap<String, Double>();
+
 						while((line = reader.readLine()) != null) {
 							
 							StringTokenizer st = new StringTokenizer(line);
@@ -59,12 +65,29 @@ public class DistanceVectorRouting {
 								return;
 							}
 							
-							String neighbourNodeName = st.nextToken();
-							Double weight = Double.parseDouble(st.nextToken());
-							
-							currentNode.addNeighbourNode(neighbourNodeName, weight, neighbourNodeName, DVR.iteration == 1);
+							String neighbourNodeName = st.nextToken().trim();
+							Double weight = Double.parseDouble(st.nextToken().trim());
+
+							neighbours.put(neighbourNodeName, weight);
 						}
 						reader.close();
+						
+						Set<String> newNeighbours = new HashSet<String>();
+						newNeighbours.addAll(neighbours.keySet());
+						newNeighbours.addAll(DVR.currentNode.neighbours.keySet());
+						
+						DVR.currentNode.neighbours = new HashMap<String, Double>();
+
+						for(String neighbourNodeName : newNeighbours){
+							Double weight = neighbours.get(neighbourNodeName);
+							
+							if(weight == null){
+								weight = Double.POSITIVE_INFINITY;
+							}
+							
+							DVR.currentNode.addNeighbourNode(neighbourNodeName, weight, neighbourNodeName, DVR.iteration == 1);
+						}
+						
 					} catch(FileNotFoundException e){
 						System.err.println("File Not Found!");
 						return;
@@ -83,7 +106,7 @@ public class DistanceVectorRouting {
 					System.out.println();
 				
 					for(String neighbour : DVR.currentNode.neighbours.keySet()){
-						
+
 						String routingTable = currentNode.getRoutingTableString(neighbour);
 					
 						byte[] data = routingTable.getBytes();
@@ -130,7 +153,7 @@ public class DistanceVectorRouting {
 
 						if(actualDistance > calculatedDistance){
 							DVR.currentNode.updateRoutingTableEntry(node, calculatedDistance, receivedNode.name);
-						} else if(nextHop.equals(receivedNode.name) && !actualDistance.equals(calculatedDistance)){
+						} else if(nextHop != null && nextHop.equals(receivedNode.name) && !actualDistance.equals(calculatedDistance)){
 							DVR.currentNode.updateRoutingTableEntry(node, calculatedDistance, receivedNode.name);
 						}
 					}
